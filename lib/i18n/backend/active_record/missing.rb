@@ -36,20 +36,26 @@ module I18n
         include Flatten
 
         def store_default_translations(locale, key, options = {})
-          count, scope, default, separator, ox_id = options.values_at(:count, :scope, :default, :separator, :ox_id)
+          count, scope, default, separator, ox_id, state = options.values_at(:count, :scope, :default, :separator, :ox_id, :state)
           separator ||= I18n.default_separator
-          ox_id ||= ENV['OX_ID']
-          key = normalize_flat_keys(locale, key, scope, separator, ox_id)
+          ox_id ||= ENV['OX_ID'] || nil
+          state ||= 'drafted'
+          options[:ox_id]=ox_id 
+          options[:state]=state 
+          key = normalize_flat_keys(locale, key, scope, separator)
 
-          unless ActiveRecord::Translation.locale(locale).lookup(key).exists?
+          unless ActiveRecord::Translation.locale(locale).lookup(key,options).exists?
             interpolations = options.keys - I18n::RESERVED_KEYS
             keys = count ? I18n.t('i18n.plural.keys', :locale => locale).map { |k| [key, k].join(FLATTEN_SEPARATOR) } : [key]
-            keys.each { |key| store_default_translation(locale, key, interpolations) }
+            keys.each { |key| store_default_translation(locale, key, interpolations, options) }
           end
         end
 
-        def store_default_translation(locale, key, interpolations)
-          translation = ActiveRecord::Translation.new :locale => locale.to_s, :key => key
+        def store_default_translation(locale, key, interpolations, options={})
+          ox_id, state = options.values_at(:ox_id, :state)
+          ox_id ||= ENV['OX_ID'] || nil
+          state ||= 'drafted'
+          translation = ActiveRecord::Translation.new :locale => locale.to_s, :key => key, :ox_id => ox_id, :state => state
           translation.interpolations = interpolations
           translation.save
         end
@@ -57,6 +63,11 @@ module I18n
         def translate(locale, key, options = {})
           super
         rescue I18n::MissingTranslationData => e
+          ox_id, state = options.values_at(:ox_id, :state)
+          ox_id ||= ENV['OX_ID'] || nil
+          state ||= 'drafted'
+          options[:ox_id]=ox_id 
+          options[:state]=state 
           self.store_default_translations(locale, key, options)
           raise e
         end

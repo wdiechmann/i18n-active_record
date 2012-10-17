@@ -11,20 +11,21 @@ module I18n
       module Implementation
         include Base, Flatten
 
-        def available_locales
+        def available_locales(ox_id=nil, state=nil)
           begin
-            Translation.available_locales
+            Translation.available_locales(ox_id, state)
           rescue ::ActiveRecord::StatementInvalid
             []
           end
         end
 
         def store_translations(locale, data, options = {})
+          ENV['OX_ID'] ||= nil
           escape = options.fetch(:escape, true)
           state = options.fetch(:state, 'drafted')
           ox_id = options.fetch(:ox_id, ENV['OX_ID'])
           flatten_translations(locale, data, escape, false).each do |key, value|
-            Translation.locale(locale).lookup(expand_keys(key)).delete_all
+            Translation.locale(locale).lookup(expand_keys(key), ox_id).delete_all
             Translation.create(:locale => locale.to_s, :key => key.to_s, :value => value, :ox_id => ox_id, state: state )
           end
         end
@@ -32,8 +33,9 @@ module I18n
       protected
 
         def lookup(locale, key, scope = [], options = {})
+          ENV['OX_ID'] ||= nil
           ox_id = options.fetch(:ox_id, ENV['OX_ID'])
-          state = options.fetch(:state, 'produciton')
+          state = options.fetch(:state, 'production')
           key = normalize_flat_keys(locale, key, scope, options[:separator])
           result = Translation.locale(locale).lookup(key,ox_id,state).all
 

@@ -64,13 +64,18 @@ module I18n
             scoped(:conditions => { :locale => locale.to_s })
           end
 
-          def lookup(keys, *separator, ox_id=nil, state='production')
+          def lookup(keys, *separator)
             column_name = connection.quote_column_name('key')
             keys = Array(keys).map! { |key| key.to_s }
-
+            state = 'drafted'
             unless separator.empty?
-              warn "[DEPRECATION] Giving a separator to Translation.lookup is deprecated. " <<
-                "You can change the internal separator by overwriting FLATTEN_SEPARATOR."
+              if separator.class == Hash
+                ox_id = separator.fetch(:ox_id,nil)
+                state = separator.fetch(:state,state)
+              else
+                warn "[DEPRECATION] Giving a separator to Translation.lookup is deprecated. " <<
+                  "You can change the internal separator by overwriting FLATTEN_SEPARATOR."
+              end
             end
 
             namespace = "#{keys.last}#{I18n::Backend::Flatten::FLATTEN_SEPARATOR}%"
