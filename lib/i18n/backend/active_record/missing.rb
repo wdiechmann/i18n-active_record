@@ -36,9 +36,10 @@ module I18n
         include Flatten
 
         def store_default_translations(locale, key, options = {})
-          count, scope, default, separator = options.values_at(:count, :scope, :default, :separator)
+          count, scope, default, separator, ox_id = options.values_at(:count, :scope, :default, :separator, :ox_id)
           separator ||= I18n.default_separator
-          key = normalize_flat_keys(locale, key, scope, separator)
+          ox_id ||= ENV['OX_ID']
+          key = normalize_flat_keys(locale, key, scope, separator, ox_id)
 
           unless ActiveRecord::Translation.locale(locale).lookup(key).exists?
             interpolations = options.keys - I18n::RESERVED_KEYS

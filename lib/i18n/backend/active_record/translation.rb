@@ -8,8 +8,10 @@ module I18n
     # your the database:
     #
     #   create_table :translations do |t|
+    #     t.integer :ox_id                        # translations 'belongs_to' an ox
     #     t.string :locale
     #     t.string :key
+    #     t.string :state, default: 'drafted'     # translations are drafted and not 'found' until cycled into 'production'
     #     t.text   :value
     #     t.text   :interpolations
     #     t.boolean :is_proc, :default => false
@@ -26,11 +28,11 @@ module I18n
     # separator or I18n.default_separator) or that exactly have this key.
     #
     #   # with translations present for :"foo.bar" and :"foo.baz"
-    #   I18n::Backend::ActiveRecord::Translation.lookup(:foo)
+    #   I18n::Backend::ActiveRecord::Translation.lookup(:foo, 1)
     #   # => an array with both translation records :"foo.bar" and :"foo.baz"
     #
-    #   I18n::Backend::ActiveRecord::Translation.lookup([:foo, :bar])
-    #   I18n::Backend::ActiveRecord::Translation.lookup(:"foo.bar")
+    #   I18n::Backend::ActiveRecord::Translation.lookup([:foo, :bar],1)
+    #   I18n::Backend::ActiveRecord::Translation.lookup(:"foo.bar",1)
     #   # => an array with the translation record :"foo.bar"
     #
     # When the StoreProcs module was mixed into this model then Procs will
@@ -39,8 +41,10 @@ module I18n
     #
     #   Translation = I18n::Backend::ActiveRecord::Translation
     #   Translation.create \
+    #     :ox_id  => 1
     #     :locale => 'en'
     #     :key    => 'foo'
+    #     :state  => 'production',
     #     :value  => lambda { |key, options| 'FOO' }
     #   Translation.find_by_locale_and_key('en', 'foo').value
     #   # => 'FOO'
@@ -60,7 +64,7 @@ module I18n
             scoped(:conditions => { :locale => locale.to_s })
           end
 
-          def lookup(keys, *separator)
+          def lookup(keys, *separator, ox_id=nil, state='production')
             column_name = connection.quote_column_name('key')
             keys = Array(keys).map! { |key| key.to_s }
 
@@ -70,11 +74,12 @@ module I18n
             end
 
             namespace = "#{keys.last}#{I18n::Backend::Flatten::FLATTEN_SEPARATOR}%"
-            scoped(:conditions => ["#{column_name} IN (?) OR #{column_name} LIKE ?", keys, namespace])
+            scoped(:conditions => ["(ox_id=?) AND (state=?) AND (#{column_name} IN (?) OR #{column_name} LIKE ?)", ox_id, state, keys, namespace])
           end
 
-          def available_locales
-            Translation.find(:all, :select => 'DISTINCT locale').map { |t| t.locale.to_sym }
+          def available_locales(ox_id=nil, state=nil)
+            state=state.nil? ? '' : " AND state='#{state}' "
+            Translation.find(:all, :select => 'DISTINCT locale', :conditions => ["ox_id=? ?", ox_id, state]).map { |t| t.locale.to_sym }
           end
         end
 

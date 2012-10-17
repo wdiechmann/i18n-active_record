@@ -21,17 +21,21 @@ module I18n
 
         def store_translations(locale, data, options = {})
           escape = options.fetch(:escape, true)
+          state = options.fetch(:state, 'drafted')
+          ox_id = options.fetch(:ox_id, ENV['OX_ID'])
           flatten_translations(locale, data, escape, false).each do |key, value|
             Translation.locale(locale).lookup(expand_keys(key)).delete_all
-            Translation.create(:locale => locale.to_s, :key => key.to_s, :value => value)
+            Translation.create(:locale => locale.to_s, :key => key.to_s, :value => value, :ox_id => ox_id, state: state )
           end
         end
 
       protected
 
         def lookup(locale, key, scope = [], options = {})
+          ox_id = options.fetch(:ox_id, ENV['OX_ID'])
+          state = options.fetch(:state, 'produciton')
           key = normalize_flat_keys(locale, key, scope, options[:separator])
-          result = Translation.locale(locale).lookup(key).all
+          result = Translation.locale(locale).lookup(key,ox_id,state).all
 
           if result.empty?
             nil
