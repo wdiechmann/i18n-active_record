@@ -36,8 +36,10 @@ module I18n
           ENV['OX_ID'] ||= nil
           ox_id = options.fetch(:ox_id, ENV['OX_ID'])
           state = options.fetch(:state, 'production')
+          options[:ox_id]=ox_id 
+          options[:state]=state 
           key = normalize_flat_keys(locale, key, scope, options[:separator])
-          result = Translation.locale(locale).lookup(key,ox_id,state).all
+          result = Translation.locale(locale).lookup(key,options).all
 
           if result.empty?
             nil
