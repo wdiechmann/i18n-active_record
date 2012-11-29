@@ -82,9 +82,10 @@ module I18n
             scoped(:conditions => ["(ox_id=?) AND (state=?) AND (#{column_name} IN (?) OR #{column_name} LIKE ?)", ox_id, state, keys, namespace])
           end
 
-          def available_locales(ox_id=nil, state=nil)
-            state=state.nil? ? '' : " AND state='#{state}' "
-            Translation.find(:all, :select => 'DISTINCT locale', :conditions => ["ox_id=? ?", ox_id, state]).map { |t| t.locale.to_sym }
+          # SELECT DISTINCT locale FROM `translations`  WHERE (translations.ox_id='1') AND (translations.state='production')
+          def available_locales(ox_id=ENV['OX_ID'], state=nil)
+            state ||= 'production'
+            Translation.unscoped.find(:all, :select => 'DISTINCT locale', :conditions => ["ox_id=? AND state=?", ox_id, state]).map { |t| t.locale.to_sym }
           end
         end
 
